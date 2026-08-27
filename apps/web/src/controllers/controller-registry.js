@@ -35,9 +35,12 @@ export class ControllerRegistry {
 
   /**
    * @param {object} [options] - Registry configuration.
-   * @param {string} [options.baseUrl] - API prefix; the Next.js rewrite serves `/api`.
+   * @param {string} [options.baseUrl] - API prefix. Defaults to `/api`, which the
+   *   Next.js rewrite forwards to the Express service. A build with no server to
+   *   rewrite — a static export — sets `NEXT_PUBLIC_API_BASE_URL` to an absolute API
+   *   origin instead, and that origin must allow this site in `CORS_ORIGINS`.
    */
-  constructor({ baseUrl = '/api' } = {}) {
+  constructor({ baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '/api' } = {}) {
     this.#http = new HttpClient({ baseUrl });
     this.#api = new ApiClient(this.#http);
 

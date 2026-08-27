@@ -121,6 +121,36 @@ and deploys through a protected `production` environment — so a deploy can nev
 its own tests. The deployment step is a placeholder for the host's own command; no
 credential lives in the workflow.
 
+## GitHub Pages preview
+
+`.github/workflows/deploy-pages.yml` publishes a static export of the web client to
+GitHub Pages on every push to `main`. Enable it once under **Settings -> Pages ->
+Source -> GitHub Actions**; the site then lands at
+`https://<owner>.github.io/<repo>/`.
+
+**It is a UI preview, not a working app.** Pages serves files; it does not run Node.js,
+so the Express API in `apps/api` is not deployed alongside it. Sign in, shops, cart,
+orders, delivery, and the admin screens all call the API and will show their error state.
+The static build differs from `npm run dev` in three ways, all forced by having no server:
+
+| Feature           | Dev                        | Static export                           |
+| ----------------- | -------------------------- | --------------------------------------- |
+| `/api/*`          | rewritten to the API       | no rewrite; needs an absolute origin    |
+| `/shops/[shopId]` | any id, rendered on demand | only the prerendered placeholder exists |
+| `next/image`      | optimised                  | `unoptimized`                           |
+
+To give the preview a real backend, host `apps/api` somewhere that runs Node, add the
+API's origin to its `CORS_ORIGINS`, and set the repository variable `API_BASE_URL`
+(**Settings -> Secrets and variables -> Actions -> Variables**) to that origin's `/api`
+path. The workflow passes it through as `NEXT_PUBLIC_API_BASE_URL`.
+
+Building the export locally:
+
+```bash
+cd apps/web
+NEXT_OUTPUT=export NEXT_BASE_PATH=/<repo> npm run build   # writes apps/web/out
+```
+
 ## Conventions
 
 kebab-case files, PascalCase classes and components, camelCase members,

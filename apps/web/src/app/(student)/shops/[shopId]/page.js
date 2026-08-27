@@ -10,6 +10,19 @@
 import { ShopDetailScreen } from '../../../../views/screens/student/shop-detail-screen.jsx';
 
 /**
+ * Parameters to prerender.
+ *
+ * Shops live in the API's database, not in the repository, so there is no real
+ * build-time list to walk; unlisted ids are rendered on demand. The single placeholder
+ * exists because a static export refuses to emit a dynamic segment with no routes at
+ * all — that build has no runtime, so only this one id resolves there.
+ *
+ * @returns {Promise<Array<{ shopId: string }>>} One placeholder parameter.
+ */
+export async function generateStaticParams() {
+  return [{ shopId: 'placeholder' }];
+}
+/**
  * Renders the ShopDetailScreen.
  *
  * @param {object} props - Route props.
