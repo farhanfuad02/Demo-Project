@@ -1,0 +1,14 @@
+{
+  "name": "@hungry-ju/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enumerations, constants, and JSDoc types shared by the API and the web client.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./enums": "./src/enums/index.js",
+    "./constants": "./src/constants/index.js",
+    "./types": "./src/types/index.js"
+  }
+}

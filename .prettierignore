@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+build
+coverage
+package-lock.json
+apps/api/data
+lint-report.json
+*.pdf

@@ -1,0 +1,23 @@
+{
+  "name": "@hungry-ju/api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Express REST API for Hungry_JU: models, repositories, services, controllers, routes.",
+  "type": "module",
+  "main": "./src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/config/database/seed.js"
+  },
+  "dependencies": {
+    "@hungry-ju/shared": "*",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.4.3"
+  }
+}

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Build output
+.next/
+out/
+build/
+dist/
+
+# Test output
+coverage/
+lint-report.json
+
+# The JSON database is local state, not source. Run `npm run seed` to recreate it.
+apps/api/data/
+
+# Environment files. The template is safe to commit; real values are not.
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Deployment
+.vercel
