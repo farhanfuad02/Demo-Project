@@ -19,8 +19,11 @@ const isStaticExport = process.env.NEXT_OUTPUT === 'export';
  * Sub-path the site is served from. GitHub Pages publishes a project site under
  * `/<repo>`, so assets and links have to be prefixed; a user or custom-domain site is
  * served from the root and needs no prefix.
+ *
+ * A root site reports its path as `/`, which Next.js rejects as a `basePath`, so the
+ * trailing slash is stripped and an empty result means "no prefix".
  */
-const basePath = process.env.NEXT_BASE_PATH ?? '';
+const basePath = (process.env.NEXT_BASE_PATH ?? '').replace(/\/+$/, '');
 
 /**
  * Application configuration.

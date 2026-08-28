@@ -36,13 +36,21 @@ jobs:
 
       - run: npm ci
 
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          # Turns the Pages site on and points its source at Actions, rather than
+          # relying on the repository setting having been flipped by hand first.
+          enablement: true
+
       - name: Build static export
         working-directory: apps/web
         env:
           NEXT_OUTPUT: export
-          # A project site lives under /<repo>, so links and assets need that prefix.
-          # Serving from a user site or a custom domain? Set this to an empty string.
-          NEXT_BASE_PATH: /${{ github.event.repository.name }}
+          # A project site is served from /<repo>, a user or custom-domain site from
+          # the root. Ask Pages which it is rather than assuming.
+          NEXT_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           # Optional: set the repository variable API_BASE_URL to the absolute origin of
           # a deployed Express API (e.g. https://hungry-ju-api.onrender.com/api) to give
           # this build a working backend. Left unset, the app has none.
