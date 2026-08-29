@@ -1,0 +1,34 @@
+# A local MongoDB for development.
+#
+# It runs as a single-node replica set rather than a plain `mongod`, because multi-document
+# transactions are only available on a replica set or a sharded cluster, and checkout
+# writes an order and its lines together. One node is enough for that: "replica set" here
+# means the oplog and the transaction machinery, not redundancy.
+#
+#   docker compose up -d mongo
+#   MONGODB_URI=mongodb://127.0.0.1:27017/hungry_ju   (in apps/api/.env)
+#
+# The API creates its own collections and indexes at boot, so there is nothing to import.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: hungry-ju-mongo
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Initiating the set is idempotent: the first run configures it, and every run after
+      # that fails harmlessly and the ping decides whether the server is up.
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0',
+        members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  mongo-data:

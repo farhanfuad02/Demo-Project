@@ -201,6 +201,45 @@ export class Env {
   }
 
   /**
+   * Which storage engine to boot.
+   *
+   * Naming a connection string is enough to select MongoDB, because having to set two
+   * variables to say one thing is how a deployment ends up pointing at a database it is
+   * not actually using. `DATABASE_DRIVER` exists for the other direction: forcing the
+   * JSON file while a `MONGODB_URI` is still sitting in the environment.
+   *
+   * @returns {string} `mongodb` or `json`.
+   */
+  get databaseDriver() {
+    const configured = this.string('DATABASE_DRIVER').toLowerCase();
+    if (configured) {
+      return configured;
+    }
+    return this.mongodbUri ? 'mongodb' : 'json';
+  }
+
+  /**
+   * Connection string for the MongoDB deployment.
+   *
+   * @returns {string} URI, or an empty string when none is configured.
+   */
+  get mongodbUri() {
+    return this.string('MONGODB_URI');
+  }
+
+  /**
+   * Database to use inside the MongoDB deployment.
+   *
+   * Empty means "whatever the connection string names", which is how Atlas URIs are
+   * normally written.
+   *
+   * @returns {string} Database name, or an empty string.
+   */
+  get mongodbDatabase() {
+    return this.string('MONGODB_DB_NAME');
+  }
+
+  /**
    * File the JSON database persists to.
    *
    * @returns {string} Absolute path.

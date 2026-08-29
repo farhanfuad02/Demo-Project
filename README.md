@@ -4,7 +4,7 @@ Campus food ordering and peer delivery for Jahangirnagar University. Students or
 the Bot Tola vendor cluster; other students deliver it and keep the delivery fee.
 
 A working full-stack application: an Express REST API and a Next.js client, both written
-in MVC with OOP throughout, covered by 571 tests, and runnable with two commands.
+in MVC with OOP throughout, covered by 651 tests, and runnable with two commands.
 
 ## Quick start
 
@@ -21,9 +21,18 @@ Open <http://localhost:3000>. Every demo account signs in with the password
 | -------------------- | -------------------------- | ------------------------------------ |
 | Student              | `farhan@juniv.edu`         | Browse, cart, checkout, tracking     |
 | Student (delivering) | `rahim@juniv.edu`          | Deliver mode is already on           |
-| Vendor               | `shihab.vendor@juniv.edu`  | Order board, menu, analytics         |
-| Vendor               | `sanjida.vendor@juniv.edu` | A second shop                        |
+| Vendor               | `shihab.vendor@juniv.edu`  | Bot Tola Bhorta Ghor — orders, menu  |
+| Vendor               | `sanjida.vendor@juniv.edu` | Akhi Fast Food                       |
+| Vendor               | `tanvir.vendor@juniv.edu`  | JU Cha Adda                          |
+| Vendor               | `rezaul.vendor@juniv.edu`  | Bot Tola Biriyani House              |
+| Vendor               | `mitu.vendor@juniv.edu`    | Mitu Pitha Ghor                      |
+| Vendor               | `jubayer.vendor@juniv.edu` | Campus Juice Bar, seeded closed      |
 | Admin                | `admin@juniv.edu`          | Approvals, users, disputes, settings |
+
+The seed writes six approved shops and 36 menu items; a few items are marked sold out and
+one shop is closed, so the browse list shows both states. Re-running `npm run seed` on a
+database that already has data does nothing — run `node src/config/database/seed.js --force`
+from `apps/api` to top it up with anything new without disturbing existing orders.
 
 ### Seeing the whole flow
 
@@ -85,15 +94,63 @@ Copy `.env.example` to `apps/api/.env`. Everything has a working development def
 the app runs before you fill anything in. In production the API refuses to start without
 `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`.
 
+| Variable          | Effect                                                          |
+| ----------------- | --------------------------------------------------------------- |
+| `MONGODB_URI`     | Run on MongoDB. Unset, the API runs on the JSON file.           |
+| `MONGODB_DB_NAME` | Database inside that server; blank means the one the URI names. |
+| `DATABASE_DRIVER` | `json` or `mongodb`, to override the choice above.              |
+
 ## Storage
 
-Data lives in `apps/api/data/hungry-ju.json`, read into memory at boot and written back
-after each change. This is deliberate: the project has no managed database and a zero
-budget, and a demo that needs a running PostgreSQL first is a demo that fails on the
-examiner's laptop. Every repository talks to an abstract `Database`, so Phase 2 swaps the
-engine by adding one subclass.
+The API runs on either of two engines, and nothing above the storage layer knows which.
+Every repository talks to an abstract `Database`; each engine is one subclass of it.
 
-Delete the file and run `npm run seed` to start over.
+| Engine    | Selected by           | What it is for                           |
+| --------- | --------------------- | ---------------------------------------- |
+| JSON file | the default           | offline demos, the test suite, no set-up |
+| MongoDB   | setting `MONGODB_URI` | real deployments and shared data         |
+
+**JSON file.** Data lives in `apps/api/data/hungry-ju.json`, read into memory at boot and
+written back after each change. This stays the default on purpose: a demo that needs a
+running database server before it will start is a demo that fails on the examiner's
+laptop. Delete the file and run `npm run seed` to start over.
+
+**MongoDB.** Point `MONGODB_URI` at a server and the same API runs against it — no code
+change, no different seed, no separate build:
+
+```bash
+# in apps/api/.env
+MONGODB_URI=mongodb://127.0.0.1:27017/hungry_ju
+```
+
+```bash
+docker compose up -d mongo   # a local single-node replica set on :27017
+npm run seed
+npm run dev
+```
+
+An Atlas cluster works the same way; paste its `mongodb+srv://` URI instead. The API logs
+which engine it booted on, so there is never a question of which one is live:
+
+```
+Database ready  driver=mongodb database=hungry_ju transactions=enabled
+```
+
+Collections and indexes are created at boot from `src/config/database/mongo-indexes.js`.
+Some of those indexes are there for speed; the unique ones are there for correctness —
+one account per e-mail, one cart per student, one delivery per order, and one rating per
+order per target (BR-08) are stated in the database and not only in the services, so two
+simultaneous requests cannot slip a duplicate past the check.
+
+Multi-document transactions need a replica set — that is a MongoDB rule, not ours, and it
+is why the compose file starts one rather than a bare `mongod`. Against a standalone
+server the API still runs and says `transactions=unavailable` at boot; each individual
+write stays atomic, but a failure part-way through checkout can leave an order without
+its lines. Deploy against a replica set or Atlas.
+
+Delivery assignment does not depend on any of that. `updateWhere` compiles to a single
+`findOneAndUpdate`, which the server applies atomically, so of several riders accepting at
+the same instant exactly one wins (FR-D3) on every deployment.
 
 ## Testing
 
@@ -101,7 +158,7 @@ Delete the file and run `npm run seed` to start over.
 npm test
 ```
 
-571 tests: value objects, models, state machines, repositories, services, middleware, the
+651 tests: value objects, models, state machines, repositories, services, middleware, the
 full HTTP surface through `supertest`, and the client's models and controllers. No module
 mocking — every class takes its collaborators through its constructor, so a fake is
 enough.
@@ -111,6 +168,13 @@ BR-04 (the cancellation window closes when cooking starts), BR-06 (nobody delive
 own order), BR-08 (one rating per order per target), BR-10 (only the customer's PIN
 closes a delivery), BR-11 (an unanswered order auto-cancels), and FR-D3 — that of many
 riders accepting at the same instant, exactly one wins.
+
+Most of the suite runs on the in-process store, which needs nothing installed. The MongoDB
+engine is the exception: `tests/integration/mongo-database.test.js` starts a real one-node
+replica set and runs both the storage contract and the whole ordering flow over HTTP
+against it, with every repository, service, and controller unchanged. The server binary is
+downloaded on first run and cached; if it cannot start, that file skips and the rest of
+the suite still runs.
 
 ## CI/CD
 

@@ -6,7 +6,7 @@
 
 import { Application } from './app.js';
 import { Env } from './config/env.js';
-import { JsonFileDatabase } from './config/database/json-file-database.js';
+import { createDatabase, describeDatabase } from './config/database/database-factory.js';
 import { Logger } from './lib/logger.js';
 
 /**
@@ -14,7 +14,8 @@ import { Logger } from './lib/logger.js';
  *
  * The signal handlers matter more than they look: the JSON store coalesces writes into a
  * microtask, so a process killed without a flush can lose the last few seconds of
- * orders. Closing the application writes them out first.
+ * orders, and an open MongoDB connection left behind holds a server-side session until
+ * it times out. Closing the application settles both.
  *
  * @returns {Promise<void>} Resolves once the server is listening.
  */
@@ -22,9 +23,9 @@ async function main() {
   const env = Env.current;
   const logger = new Logger({ level: env.logLevel });
 
-  const db = new JsonFileDatabase(env.databaseFile);
+  const db = createDatabase(env);
   await db.connect();
-  logger.info('Database ready', { file: db.filePath });
+  logger.info('Database ready', describeDatabase(db));
 
   const application = new Application({ db, env });
   await application.listen();

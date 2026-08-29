@@ -45,7 +45,7 @@ never knows it is being persisted.
 
 `models/` holds state and invariants. `repositories/` holds persistence. They are
 separate because a model that also knew SQL could not be unit-tested without a database,
-and NFR-12 asks for testable business rules. The split is what lets 571 tests run in
+and NFR-12 asks for testable business rules. The split is what lets 651 tests run in
 under ten seconds with no database process anywhere.
 
 ### Controllers vs services
@@ -97,14 +97,41 @@ repository, and the service — because it is the requirement most expensive to 
 
 ### Storage
 
-`Database` is abstract. `InMemoryDatabase` implements the whole contract;
-`JsonFileDatabase` extends it with durability. The MVP has no managed database and a zero
-budget (SRS §2.4), and a capstone demo that needs a running PostgreSQL is a demo that
-fails on the examiner's laptop. Reads and writes stay in memory — the file is only
-durability — so response times are unaffected.
+`Database` is abstract, and three classes implement it:
 
-Moving to PostgreSQL in Phase 2 means adding one subclass. No repository, service, or
-controller changes.
+| Class              | What it is                                                  |
+| ------------------ | ----------------------------------------------------------- |
+| `InMemoryDatabase` | the whole contract, in process; what the test suite runs on |
+| `JsonFileDatabase` | that, plus durability to a file; the offline default        |
+| `MongoDatabase`    | a real server, selected by setting `MONGODB_URI`            |
+
+The file store is still the default because the MVP has no managed database and a zero
+budget (SRS §2.4), and a capstone demo that needs a running server is a demo that fails on
+the examiner's laptop. Its reads and writes stay in memory — the file is only durability —
+so response times are unaffected.
+
+`MongoDatabase` is what the seam was built for, and adding it cost exactly what the design
+promised: one subclass, one factory, and no change to any repository, service, or
+controller. Three things had to be decided inside it, and all three are invisible above it:
+
+- **Naming.** The application's key is `id` and MongoDB's is `_id`. `MongoMapper` renames
+  in both directions, so a row read back from MongoDB is shaped exactly like one read back
+  from the file. It also translates the criteria operators, including `$like`, which
+  becomes a `$regex` over an _escaped_ fragment — the fragment comes from a search box, and
+  unescaped, a user typing `.*` would match every row.
+- **Atomicity.** `updateWhere` becomes one `findOneAndUpdate`, which the server applies
+  indivisibly. That is a stronger guarantee than the in-process store can give, and it is
+  what first-accept-wins delivery assignment rests on (FR-D3). `transaction()` uses a
+  session, carried to each operation through an `AsyncLocalStorage` so that no repository
+  has to accept and forward a session it has no business knowing about. MongoDB offers
+  transactions only on a replica set; against a standalone server the callback runs
+  directly and the API says so at boot, rather than refusing to start.
+- **Invariants.** The unique indexes restate rules the services already enforce — one
+  account per e-mail, one cart per student, one rating per order per target (BR-08) — in
+  the one place two concurrent requests cannot step over them. A violation is translated
+  into the same `ConflictError` the service raises, so losing that race is a 409 and not a 500.
+
+Moving to PostgreSQL later is the same exercise a third time.
 
 ---
 
@@ -172,7 +199,7 @@ on unmount, and when the thing it watches reaches an end state.
 
 ## Testing
 
-571 tests across two Jest projects, running as native ES modules — the source is ESM, and
+651 tests across two Jest projects, running as native ES modules — the source is ESM, and
 transpiling it to CommonJS just to test it would mean the code under test is not the code
 that ships.
 
@@ -181,6 +208,7 @@ that ships.
 | Value objects and models      | Directly; no collaborators needed              |
 | State machines                | Every legal and illegal transition, as a table |
 | Repositories                  | Against a throwaway `InMemoryDatabase`         |
+| The MongoDB engine            | Against a real `mongod`, started by the suite  |
 | Services                      | Through a container wired over that database   |
 | Middleware                    | With hand-written request and response doubles |
 | Controllers and routers       | Through the real Express app with `supertest`  |

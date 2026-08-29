@@ -17,7 +17,7 @@ import { StudentProfileRepository } from '../../repositories/student-profile-rep
 import { UserRepository } from '../../repositories/user-repository.js';
 import { PasswordService } from '../../services/password-service.js';
 import { Money } from '../../utils/money.js';
-import { JsonFileDatabase } from './json-file-database.js';
+import { createDatabase, describeDatabase } from './database-factory.js';
 
 /**
  * The password every seeded account shares.
@@ -47,6 +47,30 @@ const DEMO_USERS = Object.freeze([
     fullName: 'Sanjida Akter Akhi',
     email: 'sanjida.vendor@juniv.edu',
     phone: '01700000003',
+  },
+  {
+    role: USER_ROLE.VENDOR,
+    fullName: 'Tanvir Ahmed',
+    email: 'tanvir.vendor@juniv.edu',
+    phone: '01700000007',
+  },
+  {
+    role: USER_ROLE.VENDOR,
+    fullName: 'Rezaul Karim',
+    email: 'rezaul.vendor@juniv.edu',
+    phone: '01700000008',
+  },
+  {
+    role: USER_ROLE.VENDOR,
+    fullName: 'Mitu Rani Das',
+    email: 'mitu.vendor@juniv.edu',
+    phone: '01700000009',
+  },
+  {
+    role: USER_ROLE.VENDOR,
+    fullName: 'Jubayer Hasan',
+    email: 'jubayer.vendor@juniv.edu',
+    phone: '01700000010',
   },
   {
     role: USER_ROLE.STUDENT,
@@ -108,6 +132,72 @@ const DEMO_SHOPS = Object.freeze([
       { name: 'French Fries', price: 80, category: 'Snacks', prepTimeMin: 7 },
     ],
   },
+  {
+    ownerEmail: 'tanvir.vendor@juniv.edu',
+    shopName: 'JU Cha Adda',
+    botTolaLocation: 'Bot Tola, stall 2',
+    contactPhone: '01700000007',
+    operatingHours: '07:00 - 23:30',
+    description: 'Tea, toast, and the adda that comes free with both.',
+    menu: [
+      { name: 'Malai Cha', price: 25, category: 'Drinks', prepTimeMin: 4 },
+      { name: 'Rong Cha', price: 10, category: 'Drinks', prepTimeMin: 3 },
+      { name: 'Lebu Cha', price: 15, category: 'Drinks', prepTimeMin: 3 },
+      { name: 'Butter Toast', price: 35, category: 'Snacks', prepTimeMin: 6 },
+      { name: 'Chicken Sandwich', price: 90, category: 'Snacks', prepTimeMin: 9 },
+      { name: 'Nimki', price: 15, category: 'Snacks', prepTimeMin: 2 },
+      { name: 'Chocolate Biscuit', price: 20, category: 'Snacks', prepTimeMin: 1 },
+    ],
+  },
+  {
+    ownerEmail: 'rezaul.vendor@juniv.edu',
+    shopName: 'Bot Tola Biriyani House',
+    botTolaLocation: 'Bot Tola, stall 7',
+    contactPhone: '01700000008',
+    operatingHours: '11:00 - 21:00',
+    description: 'Kacchi on Fridays, biriyani every other day of the week.',
+    menu: [
+      { name: 'Chicken Biriyani', price: 150, category: 'Biriyani', prepTimeMin: 20 },
+      { name: 'Mutton Kacchi', price: 260, category: 'Biriyani', prepTimeMin: 30 },
+      { name: 'Morog Polao', price: 170, category: 'Biriyani', prepTimeMin: 22 },
+      { name: 'Beef Kala Bhuna', price: 190, category: 'Curry', prepTimeMin: 25 },
+      { name: 'Borhani', price: 40, category: 'Drinks', prepTimeMin: 2 },
+      { name: 'Firni', price: 45, category: 'Dessert', prepTimeMin: 3 },
+      { name: 'Chicken Roast', price: 140, category: 'Curry', prepTimeMin: 18, isAvailable: false },
+    ],
+  },
+  {
+    ownerEmail: 'mitu.vendor@juniv.edu',
+    shopName: 'Mitu Pitha Ghor',
+    botTolaLocation: 'Bot Tola, stall 15',
+    contactPhone: '01700000009',
+    operatingHours: '16:00 - 22:00',
+    description: 'Winter pithas made to order, plus sweets that outlast the season.',
+    menu: [
+      { name: 'Bhapa Pitha', price: 30, category: 'Pitha', prepTimeMin: 10 },
+      { name: 'Chitoi Pitha', price: 25, category: 'Pitha', prepTimeMin: 8 },
+      { name: 'Patishapta', price: 40, category: 'Pitha', prepTimeMin: 12 },
+      { name: 'Nakshi Pitha', price: 50, category: 'Pitha', prepTimeMin: 15, isAvailable: false },
+      { name: 'Roshogolla', price: 20, category: 'Dessert', prepTimeMin: 2 },
+      { name: 'Doi', price: 55, category: 'Dessert', prepTimeMin: 2 },
+    ],
+  },
+  {
+    ownerEmail: 'jubayer.vendor@juniv.edu',
+    shopName: 'Campus Juice Bar',
+    botTolaLocation: 'Bot Tola, stall 6',
+    contactPhone: '01700000010',
+    operatingHours: '09:00 - 19:00',
+    description: 'Cold-pressed juice and lassi; shuts before the evening rush.',
+    isOpen: false,
+    menu: [
+      { name: 'Mango Lassi', price: 70, category: 'Drinks', prepTimeMin: 5 },
+      { name: 'Sugarcane Juice', price: 30, category: 'Drinks', prepTimeMin: 3 },
+      { name: 'Orange Juice', price: 80, category: 'Drinks', prepTimeMin: 5 },
+      { name: 'Green Coconut', price: 60, category: 'Drinks', prepTimeMin: 2 },
+      { name: 'Fruit Salad', price: 95, category: 'Dessert', prepTimeMin: 8 },
+    ],
+  },
 ]);
 
 /**
@@ -145,7 +235,9 @@ export class Seeder {
    * Writes the dataset.
    *
    * @param {object} [options] - Seeding options.
-   * @param {boolean} [options.force] - Seed even when accounts already exist.
+   * @param {boolean} [options.force] - Seed even when accounts already exist. Existing
+   *   accounts and shops are left alone, so this tops the dataset up rather than
+   *   duplicating it.
    * @returns {Promise<{ seeded: boolean, users: number, shops: number, items: number }>} What
    *   was written.
    */
@@ -165,7 +257,18 @@ export class Seeder {
 
     /** @type {Map<string, import('../../models/user.js').User>} */
     const usersByEmail = new Map();
+    let userCount = 0;
     for (const definition of DEMO_USERS) {
+      // On a forced re-run the database already holds most of the dataset. Re-using the
+      // stored account instead of creating a second one is what lets `--force` act as a
+      // top-up, so a demo database that already carries orders can gain a new shop
+      // without being thrown away first.
+      const alreadyStored = await userRepository.findByEmail(definition.email);
+      if (alreadyStored) {
+        usersByEmail.set(definition.email, alreadyStored);
+        continue;
+      }
+
       const user = UserFactory.create(definition.role, {
         fullName: definition.fullName,
         email: definition.email,
@@ -175,6 +278,7 @@ export class Seeder {
       user.markVerified();
       const stored = await userRepository.create(user);
       usersByEmail.set(definition.email, stored);
+      userCount += 1;
 
       if (definition.role === USER_ROLE.STUDENT) {
         await profileRepository.create(
@@ -189,8 +293,15 @@ export class Seeder {
     }
 
     let itemCount = 0;
+    let shopCount = 0;
     for (const definition of DEMO_SHOPS) {
       const owner = usersByEmail.get(definition.ownerEmail);
+      // One vendor owns one shop (SRS section 3), so an owner that already has one has
+      // already been seeded.
+      if (await shopRepository.findByOwner(owner.id)) {
+        continue;
+      }
+
       const shop = new Shop({
         ownerUserId: owner.id,
         shopName: definition.shopName,
@@ -199,9 +310,10 @@ export class Seeder {
         operatingHours: definition.operatingHours,
         description: definition.description,
         approvalStatus: APPROVAL_STATUS.APPROVED,
-        isOpen: true,
+        isOpen: definition.isOpen ?? true,
       });
       const storedShop = await shopRepository.create(shop);
+      shopCount += 1;
 
       for (const item of definition.menu) {
         await menuItemRepository.create(
@@ -221,8 +333,8 @@ export class Seeder {
 
     return {
       seeded: true,
-      users: DEMO_USERS.length,
-      shops: DEMO_SHOPS.length,
+      users: userCount,
+      shops: shopCount,
       items: itemCount,
     };
   }
@@ -258,8 +370,9 @@ async function main() {
   }
 
   const logger = new Logger({ level: 'info' });
-  const db = new JsonFileDatabase(env.databaseFile);
+  const db = createDatabase(env);
   await db.connect();
+  logger.info('Seeding into', describeDatabase(db));
 
   const force = process.argv.includes('--force');
   const result = await new Seeder({ db, logger }).run({ force });
