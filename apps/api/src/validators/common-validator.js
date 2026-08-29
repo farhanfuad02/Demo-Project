@@ -5,7 +5,9 @@
  */
 
 import { z } from 'zod';
+import { GENDER } from '@hungry-ju/shared/enums';
 import { PAGINATION } from '@hungry-ju/shared/constants';
+import { ALL_HALLS } from '@hungry-ju/shared/halls';
 
 /**
  * Shared field schemas.
@@ -108,5 +110,28 @@ export class CommonValidator {
    */
   static reason() {
     return z.string().trim().min(3, 'Give a reason of at least 3 characters.').max(300);
+  }
+
+  /**
+   * A gender, which on this campus decides which halls are on offer.
+   *
+   * @returns {import('zod').ZodType} Schema for a gender.
+   */
+  static gender() {
+    return z.enum(Object.values(GENDER), { message: 'Choose male or female.' });
+  }
+
+  /**
+   * A residence hall.
+   *
+   * The schema accepts any JU hall; whether it is a hall *this* student may live in
+   * depends on their gender, which a field schema cannot see. The service pairs the two
+   * (`isHallForGender`), so a request that names a real hall of the wrong list is
+   * rejected there with a message that says so, rather than here as "invalid value".
+   *
+   * @returns {import('zod').ZodType} Schema for a hall code.
+   */
+  static hall() {
+    return z.enum([...ALL_HALLS], { message: 'Choose one of the university halls.' });
   }
 }

@@ -4,7 +4,7 @@
  * @module config/database/seed
  */
 
-import { APPROVAL_STATUS, USER_ROLE } from '@hungry-ju/shared/enums';
+import { APPROVAL_STATUS, GENDER, USER_ROLE } from '@hungry-ju/shared/enums';
 import { Env } from '../env.js';
 import { Logger } from '../../lib/logger.js';
 import { MenuItem } from '../../models/menu-item.js';
@@ -77,7 +77,8 @@ const DEMO_USERS = Object.freeze([
     fullName: 'Farhan Fuad',
     email: 'farhan@juniv.edu',
     phone: '01700000004',
-    hallName: 'Bangabandhu Sheikh Mujibur Rahman Hall',
+    gender: GENDER.MALE,
+    hallName: 'SRJ',
     roomNo: '214',
   },
   {
@@ -85,7 +86,8 @@ const DEMO_USERS = Object.freeze([
     fullName: 'Rahim Uddin',
     email: 'rahim@juniv.edu',
     phone: '01700000005',
-    hallName: 'Mir Mosharraf Hossain Hall',
+    gender: GENDER.MALE,
+    hallName: 'MH',
     roomNo: '108',
     isDeliveryEnabled: true,
   },
@@ -94,7 +96,8 @@ const DEMO_USERS = Object.freeze([
     fullName: 'Nusrat Jahan',
     email: 'nusrat@juniv.edu',
     phone: '01700000006',
-    hallName: 'Pritilata Hall',
+    gender: GENDER.FEMALE,
+    hallName: 'PRH',
     roomNo: '302',
   },
 ]);
@@ -273,6 +276,7 @@ export class Seeder {
         fullName: definition.fullName,
         email: definition.email,
         phone: definition.phone,
+        gender: definition.gender ?? null,
         passwordHash,
       });
       user.markVerified();

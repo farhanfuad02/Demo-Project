@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import {
   APPROVAL_STATUS,
   DELIVERY_STATUS,
+  GENDER,
   ORDER_STATUS,
   RATING_TARGET,
   USER_ROLE,
@@ -86,7 +87,7 @@ describe('DeliveryService', () => {
       const feed = await service.availableFor(riderActor);
       expect(feed).toHaveLength(1);
       expect(feed[0].pickup.shopName).toBe('Test Shop');
-      expect(feed[0].dropOff.hall).toBe('Test Hall');
+      expect(feed[0].dropOff.hall).toBe('SRJ');
       expect(feed[0].earning).toBe(25);
     });
 
@@ -304,7 +305,52 @@ describe('UserService', () => {
   it('returns the student profile alongside the account', async () => {
     const student = await makeUser(container);
     const profile = await container.resolve(TOKENS.USER_SERVICE).profileOf(actorFor(student));
-    expect(profile.profile.hallName).toBe('Test Hall');
+    expect(profile.profile.hallName).toBe('SRJ');
+  });
+
+  it('saves a hall from the list the student gender allows', async () => {
+    const student = await makeUser(container, { gender: GENDER.FEMALE });
+
+    const saved = await container
+      .resolve(TOKENS.USER_SERVICE)
+      .updateLocation(actorFor(student), { hallName: 'TBH', roomNo: '7' });
+
+    expect(saved.hallName).toBe('TBH');
+  });
+
+  it('refuses a hall from the other list (JU halls are gender-segregated)', async () => {
+    const student = await makeUser(container, { gender: GENDER.FEMALE });
+
+    await expect(
+      container
+        .resolve(TOKENS.USER_SERVICE)
+        .updateLocation(actorFor(student), { hallName: 'SRJ', roomNo: '7' })
+    ).rejects.toThrow(/not one of your halls/);
+  });
+
+  it('clears a hall that the new gender cannot live in, rather than trapping the student', async () => {
+    // Refusing the gender change would be a deadlock: the hall cannot be fixed until the
+    // gender is right, and the gender cannot be changed while the hall is wrong.
+    const student = await makeUser(container, { gender: GENDER.MALE });
+    const userService = container.resolve(TOKENS.USER_SERVICE);
+    await userService.updateLocation(actorFor(student), { hallName: 'ABH', roomNo: '3' });
+
+    await userService.updateProfile(actorFor(student), { gender: GENDER.FEMALE });
+
+    const after = await userService.profileOf(actorFor(student));
+    expect(after.gender).toBe(GENDER.FEMALE);
+    expect(after.profile.hallName).toBeNull();
+  });
+
+  it('keeps a hall that is still valid after the gender changes back', async () => {
+    const student = await makeUser(container, { gender: GENDER.MALE });
+    const userService = container.resolve(TOKENS.USER_SERVICE);
+    await userService.updateLocation(actorFor(student), { hallName: 'ABH', roomNo: '3' });
+
+    await userService.updateProfile(actorFor(student), { fullName: 'Renamed Student' });
+
+    const after = await userService.profileOf(actorFor(student));
+    expect(after.profile.hallName).toBe('ABH');
   });
 });
 

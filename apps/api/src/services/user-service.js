@@ -6,7 +6,9 @@
 
 import { AUDIT_ACTION, AUDIT_ENTITY, USER_ROLE } from '@hungry-ju/shared/enums';
 import { BaseService } from '../core/base-service.js';
-import { ConflictError, ForbiddenError } from '../core/errors/app-error.js';
+import { isHallForGender } from '@hungry-ju/shared/halls';
+import { ConflictError, ForbiddenError, ValidationError } from '../core/errors/app-error.js';
+import { HallPolicy } from './hall-policy.js';
 
 /**
  * Everything a signed-in user changes about themselves (FR-A8, FR-D1).
@@ -69,7 +71,7 @@ export class UserService extends BaseService {
    * @param {object} changes - Fields to update.
    * @param {string} [changes.fullName] - Display name.
    * @param {string} [changes.phone] - Contact phone.
-   * @param {string | null} [changes.gender] - Self-declared gender.
+   * @param {string} [changes.gender] - `male` or `female`; decides which halls apply.
    * @param {string | null} [changes.photoUrl] - Avatar URL.
    * @returns {Promise<Record<string, unknown>>} The updated profile.
    * @throws {ConflictError} When the new phone number belongs to another account (BR-01).
@@ -86,6 +88,19 @@ export class UserService extends BaseService {
 
     user.updateProfile(changes);
     await this.#userRepository.save(user);
+
+    // Changing gender changes which halls are available, and the one on file may no
+    // longer be among them. Clearing it is kinder than refusing the change: a student who
+    // picked the wrong gender at sign-up would otherwise have no way out, since they
+    // cannot fix the hall until the gender is right and vice versa. They are asked for a
+    // hall again at checkout, which is where it is needed.
+    if (changes.gender !== undefined && user.role === USER_ROLE.STUDENT) {
+      const profile = await this.#studentProfileRepository.findOrCreateByUserId(user.id);
+      if (profile.hallName && !isHallForGender(profile.hallName, user.gender)) {
+        profile.updateLocation({ hallName: null });
+        await this.#studentProfileRepository.save(profile);
+      }
+    }
     await this.#auditService.record({
       actorUserId: actor.id,
       entityType: AUDIT_ENTITY.USER,
@@ -101,13 +116,17 @@ export class UserService extends BaseService {
    *
    * @param {import('@hungry-ju/shared/types').Actor} actor - Signed-in student.
    * @param {object} location - Address fields.
-   * @param {string} [location.hallName] - Residence hall.
+   * @param {string} [location.hallName] - Residence hall code, e.g. `SRJ`.
    * @param {string} [location.roomNo] - Room or gate.
    * @returns {Promise<Record<string, unknown>>} The updated student profile.
    * @throws {ForbiddenError} When the caller is not a student.
+   * @throws {ValidationError} When the hall does not belong to the student's gender.
    */
   async updateLocation(actor, location) {
     this.assertRole(actor, USER_ROLE.STUDENT);
+    const user = await this.#userRepository.findByIdOrFail(actor.id, 'Account');
+    HallPolicy.assertMatchesGender(location.hallName, user.gender);
+
     const profile = await this.#studentProfileRepository.findOrCreateByUserId(actor.id);
     profile.updateLocation(location);
     const saved = await this.#studentProfileRepository.save(profile);

@@ -263,11 +263,11 @@ describe('SessionController', () => {
   it('re-reads the profile after changing the delivery address', async () => {
     const { controller, api } = build({
       auth: { login: async () => ({ accessToken: 'a' }), me: async () => profile },
-      users: { updateLocation: async () => ({ hallName: 'Pritilata Hall' }) },
+      users: { updateLocation: async () => ({ hallName: 'PRH' }) },
     });
     await controller.login('a', 'b');
 
-    await controller.updateLocation({ hallName: 'Pritilata Hall', roomNo: '302' });
+    await controller.updateLocation({ hallName: 'PRH', roomNo: '302' });
     expect(api.countOf('auth', 'me')).toBe(2);
   });
 });

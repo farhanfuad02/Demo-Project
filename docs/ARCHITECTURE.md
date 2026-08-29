@@ -45,7 +45,7 @@ never knows it is being persisted.
 
 `models/` holds state and invariants. `repositories/` holds persistence. They are
 separate because a model that also knew SQL could not be unit-tested without a database,
-and NFR-12 asks for testable business rules. The split is what lets 651 tests run in
+and NFR-12 asks for testable business rules. The split is what lets 687 tests run in
 under ten seconds with no database process anywhere.
 
 ### Controllers vs services
@@ -94,6 +94,24 @@ the row still reads `available` with no rider. Two riders tapping Accept at the 
 instant cannot both succeed; the loser receives `null`, and one layer up a
 `ConflictError` → HTTP 409. This is covered by tests at three levels — the store, the
 repository, and the service — because it is the requirement most expensive to get wrong.
+
+### Halls and gender
+
+JU's halls are gender-segregated, which makes a hall a validated choice rather than a
+string. The two lists are in `@hungry-ju/shared/halls` — one module, imported by the API's
+validators and by the client's dropdown, so what is offered and what is accepted cannot
+drift apart.
+
+The rule spans two entities: gender is on the account, the hall is on the student profile.
+Neither model can enforce it alone, so responsibility is split rather than duplicated.
+`StudentProfile` guards what it can see — that the hall is a JU hall at all. `HallPolicy`
+owns the pairing, and the three places a hall can be set (registration, the profile
+screen, and a checkout that overrides the address for one order) all call it, so all three
+refuse the same thing in the same words.
+
+Checkout is checked and not merely trusted: it accepts a hall for a single order without
+saving it, so the stored profile having passed the check earlier proves nothing about the
+hall actually being used.
 
 ### Storage
 
@@ -199,7 +217,7 @@ on unmount, and when the thing it watches reaches an end state.
 
 ## Testing
 
-651 tests across two Jest projects, running as native ES modules — the source is ESM, and
+687 tests across two Jest projects, running as native ES modules — the source is ESM, and
 transpiling it to CommonJS just to test it would mean the code under test is not the code
 that ships.
 

@@ -4,7 +4,7 @@
  * @module models/user
  */
 
-import { USER_STATUS } from '@hungry-ju/shared/enums';
+import { GENDER, USER_STATUS } from '@hungry-ju/shared/enums';
 import { AUTH, ROLE_HOME_ROUTE } from '@hungry-ju/shared/constants';
 import { BaseModel } from '../core/base-model.js';
 import { ValidationError } from '../core/errors/app-error.js';
@@ -20,7 +20,8 @@ import { ValidationError } from '../core/errors/app-error.js';
  * @property {string | null} [email] - Unique login e-mail (BR-01).
  * @property {string | null} [phone] - Unique contact phone (BR-01).
  * @property {string} passwordHash - Bcrypt hash; plaintext never reaches this layer.
- * @property {string | null} [gender] - Optional self-declared gender.
+ * @property {string | null} [gender] - `male` or `female`; decides which residence halls
+ *   the account may choose from.
  * @property {string | null} [photoUrl] - Optional avatar URL.
  * @property {import('@hungry-ju/shared/types').UserStatus} [status] - Lifecycle state.
  * @property {number} [failedLoginCount] - Consecutive failed sign-ins (FR-A6).
@@ -360,6 +361,12 @@ export class User extends BaseModel {
     }
     if (!this.#passwordHash) {
       throw new ValidationError('A password is required.');
+    }
+    // Gender stays optional — a vendor has no hall and no reason to state one — but when
+    // it is given it has to be a value the hall lists are keyed by, or the student would
+    // be offered a dropdown with nothing in it.
+    if (this.#gender !== null && !Object.values(GENDER).includes(this.#gender)) {
+      throw new ValidationError('Gender must be either male or female.');
     }
   }
 

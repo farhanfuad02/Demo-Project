@@ -5,7 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it } from '@jest/globals';
-import { APPROVAL_STATUS, ORDER_STATUS, USER_ROLE } from '@hungry-ju/shared/enums';
+import { APPROVAL_STATUS, GENDER, ORDER_STATUS, USER_ROLE } from '@hungry-ju/shared/enums';
 import { ORDER_DEFAULTS } from '@hungry-ju/shared/constants';
 import { TOKENS } from '../../../src/config/container.js';
 import { Money } from '../../../src/utils/money.js';
@@ -247,7 +247,7 @@ describe('OrderService', () => {
       await shopRepository.save(reloaded);
 
       await expect(
-        service.place(studentActor, { deliveryHall: 'Hall', deliveryRoom: '1' })
+        service.place(studentActor, { deliveryHall: 'SRJ', deliveryRoom: '1' })
       ).rejects.toThrow(ConflictError);
     });
 
@@ -261,7 +261,7 @@ describe('OrderService', () => {
       await menuRepository.save(item);
 
       const failure = await service
-        .place(studentActor, { deliveryHall: 'Hall', deliveryRoom: '1' })
+        .place(studentActor, { deliveryHall: 'SRJ', deliveryRoom: '1' })
         .catch((error) => error);
 
       expect(failure).toBeInstanceOf(ConflictError);
@@ -275,7 +275,58 @@ describe('OrderService', () => {
       await container.resolve(TOKENS.CART_SERVICE).addItem(studentActor, items[0].id, 1);
 
       const { order } = await service.place(studentActor, {});
-      expect(order.deliveryHall).toBe('Test Hall');
+      expect(order.deliveryHall).toBe('SRJ');
+    });
+
+    it('refuses a delivery hall that belongs to the other gender', async () => {
+      const { items } = await makeShop(container, { menu: [{ name: 'Khichuri', price: 60 }] });
+      await container.resolve(TOKENS.CART_SERVICE).addItem(studentActor, items[0].id, 1);
+
+      // The student is male and the profile hall passed this check when it was saved, but
+      // checkout may override the hall for one order without saving it — so the override
+      // is checked too, not just the stored address.
+      await expect(
+        service.place(studentActor, { deliveryHall: 'PRH', deliveryRoom: '1' })
+      ).rejects.toThrow(/not one of your halls/);
+      expect(await container.resolve(TOKENS.ORDER_REPOSITORY).count({})).toBe(0);
+    });
+
+    it('accepts any hall on the matching list, not only the saved one', async () => {
+      const { items } = await makeShop(container, { menu: [{ name: 'Khichuri', price: 60 }] });
+      await container.resolve(TOKENS.CART_SERVICE).addItem(studentActor, items[0].id, 1);
+
+      const { order } = await service.place(studentActor, {
+        deliveryHall: 'ABH',
+        deliveryRoom: '12',
+      });
+
+      expect(order.deliveryHall).toBe('ABH');
+    });
+
+    it('delivers a female student to a female hall', async () => {
+      const her = await makeUser(container, { gender: GENDER.FEMALE });
+      const herActor = actorFor(her);
+      const profileRepository = container.resolve(TOKENS.STUDENT_PROFILE_REPOSITORY);
+      const profile = await profileRepository.findByUserId(her.id);
+      profile.updateLocation({ hallName: 'BKZH', roomNo: '9' });
+      await profileRepository.save(profile);
+
+      const { items } = await makeShop(container, { menu: [{ name: 'Khichuri', price: 60 }] });
+      await container.resolve(TOKENS.CART_SERVICE).addItem(herActor, items[0].id, 1);
+
+      const { order } = await service.place(herActor, {});
+      expect(order.deliveryHall).toBe('BKZH');
+    });
+
+    it('refuses a hall when the account has no gender to check it against', async () => {
+      const nobody = await makeUser(container, { gender: null });
+      const theirActor = actorFor(nobody);
+      const { items } = await makeShop(container, { menu: [{ name: 'Khichuri', price: 60 }] });
+      await container.resolve(TOKENS.CART_SERVICE).addItem(theirActor, items[0].id, 1);
+
+      await expect(
+        service.place(theirActor, { deliveryHall: 'SRJ', deliveryRoom: '1' })
+      ).rejects.toThrow(/Set your gender/);
     });
 
     it('refuses when there is no address anywhere (FR-C6)', async () => {

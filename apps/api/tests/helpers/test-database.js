@@ -12,7 +12,7 @@ import { MenuItem } from '../../src/models/menu-item.js';
 import { Shop } from '../../src/models/shop.js';
 import { StudentProfile } from '../../src/models/student-profile.js';
 import { UserFactory } from '../../src/models/user-factory.js';
-import { USER_ROLE, APPROVAL_STATUS } from '@hungry-ju/shared/enums';
+import { USER_ROLE, APPROVAL_STATUS, GENDER } from '@hungry-ju/shared/enums';
 
 /**
  * A fresh, connected in-memory database.
@@ -50,6 +50,7 @@ export async function makeContainer() {
  * @param {string} [attributes.fullName] - Display name.
  * @param {string} [attributes.email] - E-mail address.
  * @param {string} [attributes.phone] - Phone number.
+ * @param {string} [attributes.gender] - Gender, which decides the halls on offer.
  * @param {boolean} [attributes.verified] - Whether to mark the account verified.
  * @returns {Promise<import('../../src/models/user.js').User>} The stored account.
  */
@@ -60,6 +61,7 @@ export async function makeUser(
     fullName = 'Test Student',
     email = `${role}-${Math.random().toString(36).slice(2, 8)}@juniv.edu`,
     phone = undefined,
+    gender = GENDER.MALE,
     verified = true,
   } = {}
 ) {
@@ -68,6 +70,7 @@ export async function makeUser(
     fullName,
     email,
     phone: phone ?? null,
+    gender,
     passwordHash: '$2b$04$abcdefghijklmnopqrstuv',
   });
   if (verified) {
@@ -79,7 +82,7 @@ export async function makeUser(
     await container.resolve(TOKENS.STUDENT_PROFILE_REPOSITORY).create(
       new StudentProfile({
         userId: stored.id,
-        hallName: 'Test Hall',
+        hallName: 'SRJ',
         roomNo: '101',
         isDeliveryEnabled: false,
       })
@@ -164,7 +167,7 @@ export async function placeOrder(container, { student, item, quantity = 1 }) {
   const actor = actorFor(student);
   await container.resolve(TOKENS.CART_SERVICE).addItem(actor, item.id, quantity);
   return container.resolve(TOKENS.ORDER_SERVICE).place(actor, {
-    deliveryHall: 'Test Hall',
+    deliveryHall: 'SRJ',
     deliveryRoom: '101',
   });
 }

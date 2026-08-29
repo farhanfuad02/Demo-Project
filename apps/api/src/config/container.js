@@ -394,6 +394,7 @@ export class Container {
           orderRepository: c.resolve(TOKENS.ORDER_REPOSITORY),
           shopRepository: c.resolve(TOKENS.SHOP_REPOSITORY),
           studentProfileRepository: c.resolve(TOKENS.STUDENT_PROFILE_REPOSITORY),
+          userRepository: c.resolve(TOKENS.USER_REPOSITORY),
           cartService: c.resolve(TOKENS.CART_SERVICE),
           deliveryService: c.resolve(TOKENS.DELIVERY_SERVICE),
           paymentService: c.resolve(TOKENS.PAYMENT_SERVICE),

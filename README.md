@@ -4,7 +4,7 @@ Campus food ordering and peer delivery for Jahangirnagar University. Students or
 the Bot Tola vendor cluster; other students deliver it and keep the delivery fee.
 
 A working full-stack application: an Express REST API and a Next.js client, both written
-in MVC with OOP throughout, covered by 651 tests, and runnable with two commands.
+in MVC with OOP throughout, covered by 687 tests, and runnable with two commands.
 
 ## Quick start
 
@@ -48,6 +48,29 @@ Sign in as the student in one browser and the vendor in another (a private windo
 
 No mail provider is configured in development, so verification and reset links come back
 in the response and are shown on screen instead of being e-mailed.
+
+### Halls
+
+JU's residence halls are gender-segregated, so a hall is not free text: a student states a
+gender and then picks from that gender's list. Both lists live in
+`packages/shared/src/halls/index.js`, which is read by the API's validators and by the
+client's dropdown, so the halls a student is offered and the halls the server accepts are
+the same list by construction.
+
+| Gender | Halls                                                 |
+| ------ | ----------------------------------------------------- |
+| Male   | SRJ, SSB, SBF, MBH, RTH, KUH, KNH, STUH, NSH, MH, ABH |
+| Female | RH, TBH, NFH, SFH, SKH, PRH, JIH, J24H, BKZH, FZH     |
+
+The code is the stored value — it is what students say and write, and it stays valid if a
+hall later gains a longer display name. The rule is enforced at every point a hall can be
+set: registration, the profile screen, and the delivery address at checkout, which may
+name a different hall for one order without saving it. A student with no gender on file is
+asked for that first rather than shown an empty dropdown.
+
+Changing gender clears a hall that belongs to the other list rather than refusing the
+change — otherwise a student who picked the wrong gender at sign-up could never fix
+either field.
 
 ## Layout
 
@@ -158,7 +181,7 @@ the same instant exactly one wins (FR-D3) on every deployment.
 npm test
 ```
 
-651 tests: value objects, models, state machines, repositories, services, middleware, the
+687 tests: value objects, models, state machines, repositories, services, middleware, the
 full HTTP surface through `supertest`, and the client's models and controllers. No module
 mocking — every class takes its collaborators through its constructor, so a fake is
 enough.

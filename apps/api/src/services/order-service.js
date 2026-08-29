@@ -8,6 +8,7 @@ import { AUDIT_ENTITY, NOTIFICATION_TYPE, ORDER_STATUS, USER_ROLE } from '@hungr
 import { BaseService } from '../core/base-service.js';
 import { ConflictError, ForbiddenError, ValidationError } from '../core/errors/app-error.js';
 import { Order } from '../models/order.js';
+import { HallPolicy } from './hall-policy.js';
 import { Identifier } from '../utils/identifier.js';
 import { QueryOptions } from '../utils/query-options.js';
 
@@ -30,6 +31,9 @@ export class OrderService extends BaseService {
 
   /** @type {import('../repositories/student-profile-repository.js').StudentProfileRepository} */
   #studentProfileRepository;
+
+  /** @type {import('../repositories/user-repository.js').UserRepository} */
+  #userRepository;
 
   /** @type {import('./cart-service.js').CartService} */
   #cartService;
@@ -57,6 +61,8 @@ export class OrderService extends BaseService {
    *   Shop storage.
    * @param {import('../repositories/student-profile-repository.js').StudentProfileRepository} dependencies.studentProfileRepository -
    *   Supplies the default delivery address.
+   * @param {import('../repositories/user-repository.js').UserRepository} dependencies.userRepository -
+   *   Supplies the gender that decides which halls the student may deliver to.
    * @param {import('./cart-service.js').CartService} dependencies.cartService - Cart rules.
    * @param {import('./delivery-service.js').DeliveryService} dependencies.deliveryService -
    *   Delivery lifecycle.
@@ -72,6 +78,7 @@ export class OrderService extends BaseService {
     orderRepository,
     shopRepository,
     studentProfileRepository,
+    userRepository,
     cartService,
     deliveryService,
     paymentService,
@@ -83,6 +90,7 @@ export class OrderService extends BaseService {
     this.#orderRepository = orderRepository;
     this.#shopRepository = shopRepository;
     this.#studentProfileRepository = studentProfileRepository;
+    this.#userRepository = userRepository;
     this.#cartService = cartService;
     this.#deliveryService = deliveryService;
     this.#paymentService = paymentService;
@@ -101,12 +109,13 @@ export class OrderService extends BaseService {
    *
    * @param {import('@hungry-ju/shared/types').Actor} actor - Signed-in student.
    * @param {object} details - Checkout details.
-   * @param {string} [details.deliveryHall] - Destination hall; defaults to the profile.
+   * @param {string} [details.deliveryHall] - Destination hall code; defaults to the profile.
    * @param {string} [details.deliveryRoom] - Destination room; defaults to the profile.
    * @param {string} [details.note] - Free-text note.
    * @returns {Promise<{ order: Record<string, unknown>, confirmPin: string }>} The order and
    *   the PIN the student reads out on delivery.
-   * @throws {ValidationError} When the cart is empty or no address is available.
+   * @throws {ValidationError} When the cart is empty, no address is available, or the hall
+   *   does not belong to the student's gender.
    * @throws {ConflictError} When the shop closed or prices moved during checkout.
    */
   async place(actor, { deliveryHall, deliveryRoom, note = null }) {
@@ -136,6 +145,13 @@ export class OrderService extends BaseService {
     if (!hall || !room) {
       throw new ValidationError('Add your hall and room before placing an order.');
     }
+
+    // Checkout accepts a hall for this one order without saving it, so the stored profile
+    // having passed this check earlier proves nothing about the hall actually being used.
+    // JU's halls are gender-segregated, and sending a rider to the wrong one is a delivery
+    // that cannot be completed.
+    const student = await this.#userRepository.findByIdOrFail(actor.id, 'Account');
+    HallPolicy.assertMatchesGender(hall, student.gender);
 
     const deliveryFee = await this.#settingsService.deliveryFee();
     const draft = Order.fromCart({

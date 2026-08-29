@@ -5,7 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { TOKEN_TYPE, USER_ROLE, USER_STATUS } from '@hungry-ju/shared/enums';
+import { GENDER, TOKEN_TYPE, USER_ROLE, USER_STATUS } from '@hungry-ju/shared/enums';
 import { AUTH } from '@hungry-ju/shared/constants';
 import { TOKENS } from '../../../src/config/container.js';
 import { EmailService, ConsoleEmailService } from '../../../src/services/email-service.js';
@@ -235,14 +235,37 @@ describe('AuthService', () => {
     it('creates a student profile alongside the account', async () => {
       const { user } = await service.register({
         ...validRegistration,
-        hallName: 'Pritilata Hall',
+        gender: GENDER.FEMALE,
+        hallName: 'PRH',
         roomNo: '302',
       });
       const profile = await container
         .resolve(TOKENS.STUDENT_PROFILE_REPOSITORY)
         .findByUserId(user.id);
 
-      expect(profile.hallName).toBe('Pritilata Hall');
+      expect(user.gender).toBe(GENDER.FEMALE);
+      expect(profile.hallName).toBe('PRH');
+    });
+
+    it('refuses a hall that belongs to the other gender', async () => {
+      await expect(
+        service.register({ ...validRegistration, gender: GENDER.FEMALE, hallName: 'SRJ' })
+      ).rejects.toThrow(/not one of your halls/);
+    });
+
+    it('refuses a hall when no gender was given, since neither list applies', async () => {
+      await expect(service.register({ ...validRegistration, hallName: 'SRJ' })).rejects.toThrow(
+        /Set your gender/
+      );
+    });
+
+    it('leaves no account behind when the hall is rejected', async () => {
+      await expect(
+        service.register({ ...validRegistration, gender: GENDER.MALE, hallName: 'PRH' })
+      ).rejects.toThrow();
+
+      const repository = container.resolve(TOKENS.USER_REPOSITORY);
+      await expect(repository.findByEmail(validRegistration.email)).resolves.toBeNull();
     });
 
     it('refuses a duplicate e-mail (BR-01)', async () => {

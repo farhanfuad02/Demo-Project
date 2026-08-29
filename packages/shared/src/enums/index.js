@@ -8,6 +8,21 @@
  */
 
 /**
+ * Gender, which on this campus is an address question rather than a demographic one:
+ * JU's residence halls are gender-segregated, so it is what decides which hall list a
+ * student picks from (`@hungry-ju/shared/halls`).
+ *
+ * Two values, because the halls come in two sets and a student who belongs to neither
+ * has no hall to be offered.
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+export const GENDER = Object.freeze({
+  MALE: 'male',
+  FEMALE: 'female',
+});
+
+/**
  * Roles a user account can hold; drives RBAC and post-login routing (FR-A7).
  *
  * @type {Readonly<Record<string, string>>}

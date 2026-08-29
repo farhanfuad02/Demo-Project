@@ -4,6 +4,7 @@
  * @module models/student-profile
  */
 
+import { isHall } from '@hungry-ju/shared/halls';
 import { BaseModel } from '../core/base-model.js';
 import { ValidationError } from '../core/errors/app-error.js';
 
@@ -43,7 +44,7 @@ export class StudentProfile extends BaseModel {
    * @param {Date | string | null} [attributes.createdAt] - Creation timestamp.
    * @param {Date | string | null} [attributes.updatedAt] - Last write timestamp.
    * @param {string} attributes.userId - Owning account.
-   * @param {string | null} [attributes.hallName] - Residence hall.
+   * @param {string | null} [attributes.hallName] - Residence hall code, e.g. `SRJ`.
    * @param {string | null} [attributes.roomNo] - Room or gate.
    * @param {boolean} [attributes.isDeliveryEnabled] - Whether Deliver Mode is on (FR-D1).
    * @param {number} [attributes.riderRatingSum] - Total stars received as a rider.
@@ -84,7 +85,7 @@ export class StudentProfile extends BaseModel {
   /**
    * Residence hall.
    *
-   * @returns {string | null} Hall name.
+   * @returns {string | null} Hall code, e.g. `SRJ`.
    */
   get hallName() {
     return this.#hallName;
@@ -151,12 +152,14 @@ export class StudentProfile extends BaseModel {
    * Updates the delivery address.
    *
    * @param {object} changes - Address fields.
-   * @param {string} [changes.hallName] - Residence hall.
+   * @param {string | null} [changes.hallName] - Residence hall code, e.g. `SRJ`.
    * @param {string} [changes.roomNo] - Room or gate.
    * @returns {void}
+   * @throws {ValidationError} When the hall is not one of JU's.
    */
   updateLocation({ hallName, roomNo }) {
     if (hallName !== undefined) {
+      this.#assertHall(hallName);
       this.#hallName = hallName;
     }
     if (roomNo !== undefined) {
@@ -216,6 +219,24 @@ export class StudentProfile extends BaseModel {
   validate() {
     if (!this.#userId) {
       throw new ValidationError('A student profile must belong to an account.');
+    }
+    this.#assertHall(this.#hallName);
+  }
+
+  /**
+   * Rejects a hall that is not one of JU's.
+   *
+   * Which of the two lists it has to come from is not decided here: that depends on the
+   * account's gender, which lives on the user and not on this row. The entity guards what
+   * it can see — that the hall exists at all — and the service pairs it with the gender.
+   *
+   * @param {string | null} hallName - Hall code to check; `null` means "not set yet".
+   * @returns {void} Returns nothing when the hall is acceptable.
+   * @throws {ValidationError} When the code names no JU hall.
+   */
+  #assertHall(hallName) {
+    if (hallName !== null && hallName !== '' && !isHall(hallName)) {
+      throw new ValidationError(`"${hallName}" is not a Jahangirnagar University hall.`);
     }
   }
 

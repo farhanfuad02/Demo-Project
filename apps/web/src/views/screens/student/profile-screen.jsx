@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useControllerState, useRegistry, useSession } from '../../providers/app-provider.jsx';
 import { Alert, Button, Card, PageHeader, Stat } from '../../ui/primitives.jsx';
 import { Field, Input } from '../../ui/form.jsx';
+import { GenderSelect, HallSelect } from '../../ui/hall-select.jsx';
 
 /**
  * The profile screen: identity, delivery address, and rider standing.
@@ -25,7 +26,7 @@ export function ProfileScreen() {
   const { user } = useSession();
   const state = useControllerState(registry.session);
 
-  const [profile, setProfile] = useState({ fullName: '', phone: '' });
+  const [profile, setProfile] = useState({ fullName: '', phone: '', gender: '' });
   const [location, setLocation] = useState({ hallName: '', roomNo: '' });
   const [saved, setSaved] = useState('');
   const [syncedUser, setSyncedUser] = useState(null);
@@ -34,7 +35,7 @@ export function ProfileScreen() {
   // and an effect would show one frame of empty inputs before filling them in.
   if (user && user !== syncedUser) {
     setSyncedUser(user);
-    setProfile({ fullName: user.fullName, phone: user.phone ?? '' });
+    setProfile({ fullName: user.fullName, phone: user.phone ?? '', gender: user.gender ?? '' });
     setLocation({ hallName: user.hallName ?? '', roomNo: user.roomNo ?? '' });
   }
 
@@ -50,8 +51,14 @@ export function ProfileScreen() {
    */
   const saveProfile = async (event) => {
     event.preventDefault();
-    const updated = await registry.session.updateProfile(profile);
+    // An unset gender is omitted rather than sent as an empty string: the schema accepts
+    // the two values or nothing at all, and "" is neither.
+    const changes = profile.gender ? profile : { fullName: profile.fullName, phone: profile.phone };
+    const updated = await registry.session.updateProfile(changes);
     setSaved(updated ? 'Profile saved.' : '');
+    // Changing gender can clear a hall that belongs to the other list. Nothing more is
+    // needed here: the refreshed session is a new object, so the render-time sync above
+    // re-seeds the address form from what the server actually holds.
   };
 
   /**
@@ -97,6 +104,17 @@ export function ProfileScreen() {
               />
             )}
           </Field>
+          {user.isStudent ? (
+            <Field label="Gender" hint="JU halls are separate, so this decides your hall list.">
+              {(id) => (
+                <GenderSelect
+                  id={id}
+                  value={profile.gender}
+                  onChange={(value) => setProfile((current) => ({ ...current, gender: value }))}
+                />
+              )}
+            </Field>
+          ) : null}
           <Button type="submit" busy={Boolean(state.loading)}>
             Save profile
           </Button>
@@ -113,14 +131,13 @@ export function ProfileScreen() {
               <div className="grid gap-x-3 sm:grid-cols-2">
                 <Field label="Hall" required>
                   {(id) => (
-                    <Input
+                    <HallSelect
                       id={id}
-                      name="hallName"
                       value={location.hallName}
+                      gender={user.gender}
                       onChange={(value) =>
                         setLocation((current) => ({ ...current, hallName: value }))
                       }
-                      required
                     />
                   )}
                 </Field>

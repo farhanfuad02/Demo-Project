@@ -20,6 +20,7 @@ import {
   Spinner,
 } from '../../ui/primitives.jsx';
 import { Field, Input, QuantityStepper, Textarea } from '../../ui/form.jsx';
+import { HallSelect } from '../../ui/hall-select.jsx';
 
 /**
  * The money lines, which FR-C5 requires to recalculate as the cart changes.
@@ -245,8 +246,20 @@ export function CartScreen() {
       <Card title="Where should it go?">
         <form onSubmit={checkout} noValidate>
           <div className="grid gap-x-3 sm:grid-cols-2">
-            <Field label="Hall" required>
-              {(id) => <Input id={id} name="hall" value={hall} onChange={setHall} required />}
+            <Field
+              label="Hall"
+              hint={user?.gender ? undefined : 'Set your gender in your profile to pick a hall.'}
+              required
+            >
+              {(id) => (
+                <HallSelect
+                  id={id}
+                  name="hall"
+                  value={hall}
+                  gender={user?.gender}
+                  onChange={setHall}
+                />
+              )}
             </Field>
             <Field label="Room / gate" required>
               {(id) => <Input id={id} name="room" value={room} onChange={setRoom} required />}

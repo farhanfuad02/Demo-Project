@@ -177,7 +177,7 @@ describe('StudentProfile', () => {
 
   it('knows when an order can actually be delivered to it', () => {
     const profile = new StudentProfile({ userId: 'u1' });
-    profile.updateLocation({ hallName: 'Pritilata Hall' });
+    profile.updateLocation({ hallName: 'PRH' });
     expect(profile.hasDeliveryAddress).toBe(false);
 
     profile.updateLocation({ roomNo: '302' });

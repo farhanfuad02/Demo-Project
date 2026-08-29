@@ -12,6 +12,7 @@ import { USER_ROLE } from '@hungry-ju/shared/enums';
 import { useControllerState, useRegistry } from '../../providers/app-provider.jsx';
 import { Alert, Button, Card } from '../../ui/primitives.jsx';
 import { Field, Input, Select } from '../../ui/form.jsx';
+import { GenderSelect, HallSelect } from '../../ui/hall-select.jsx';
 
 /** Roles a visitor may register as. Admin is absent on purpose — those accounts are seeded. */
 const ROLE_OPTIONS = Object.freeze([
@@ -37,6 +38,7 @@ export function RegisterScreen() {
     phone: '',
     password: '',
     role: USER_ROLE.STUDENT,
+    gender: '',
     hallName: '',
     roomNo: '',
   });
@@ -179,18 +181,38 @@ export function RegisterScreen() {
           </Field>
 
           {form.role === USER_ROLE.STUDENT ? (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Hall" hint="You can add this later.">
+            <>
+              <Field label="Gender" hint="JU halls are separate, so this decides your hall list.">
                 {(id) => (
-                  <Input id={id} name="hallName" value={form.hallName} onChange={set('hallName')} />
+                  <GenderSelect
+                    id={id}
+                    value={form.gender}
+                    onChange={(value) =>
+                      // The hall belongs to the old list once the gender moves, so it goes
+                      // rather than being submitted as a hall this student cannot live in.
+                      setForm((current) => ({ ...current, gender: value, hallName: '' }))
+                    }
+                  />
                 )}
               </Field>
-              <Field label="Room / gate">
-                {(id) => (
-                  <Input id={id} name="roomNo" value={form.roomNo} onChange={set('roomNo')} />
-                )}
-              </Field>
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Hall" hint="You can add this later.">
+                  {(id) => (
+                    <HallSelect
+                      id={id}
+                      value={form.hallName}
+                      gender={form.gender}
+                      onChange={set('hallName')}
+                    />
+                  )}
+                </Field>
+                <Field label="Room / gate">
+                  {(id) => (
+                    <Input id={id} name="roomNo" value={form.roomNo} onChange={set('roomNo')} />
+                  )}
+                </Field>
+              </div>
+            </>
           ) : null}
 
           <Button type="submit" busy={Boolean(state.loading)} full>

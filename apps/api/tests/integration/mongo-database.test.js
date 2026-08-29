@@ -454,7 +454,8 @@ describeMongo('the API over MongoDB', () => {
       fullName: 'Farhan Fuad',
       email: 'farhan@juniv.edu',
       password: PASSWORD,
-      hallName: 'Bangabandhu Sheikh Mujibur Rahman Hall',
+      gender: 'male',
+      hallName: 'SRJ',
       roomNo: '214',
     });
 

@@ -49,7 +49,7 @@ function makeOrder({ price = 60, quantity = 2, fee = 25 } = {}) {
     cart: makeCart(price, quantity),
     reference: 'HJU-TEST',
     deliveryFee: Money.fromTaka(fee),
-    deliveryHall: 'Pritilata Hall',
+    deliveryHall: 'PRH',
     deliveryRoom: '302',
   });
 }
@@ -112,7 +112,7 @@ describe('Order', () => {
         cart: new Cart({ studentId: 'u1' }),
         reference: 'HJU-X',
         deliveryFee: Money.fromTaka(25),
-        deliveryHall: 'Hall',
+        deliveryHall: 'SRJ',
         deliveryRoom: '1',
       })
     ).toThrow(ValidationError);
@@ -124,7 +124,7 @@ describe('Order', () => {
       cart,
       reference: 'HJU-X',
       deliveryFee: Money.fromTaka(25),
-      deliveryHall: 'Hall',
+      deliveryHall: 'SRJ',
       deliveryRoom: '1',
     });
     expect(cart.isEmpty).toBe(false);

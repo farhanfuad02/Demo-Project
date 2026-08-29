@@ -22,20 +22,29 @@ export class AuthValidator {
    * @returns {import('zod').ZodType} Schema for the registration body.
    */
   static register() {
-    return z
-      .object({
-        fullName: z.string().trim().min(2, 'Enter your full name.').max(120),
-        email: CommonValidator.email().optional(),
-        phone: CommonValidator.phone().optional(),
-        password: z.string().min(1, 'Choose a password.'),
-        role: z.enum([USER_ROLE.STUDENT, USER_ROLE.VENDOR]).default(USER_ROLE.STUDENT),
-        hallName: z.string().trim().max(120).optional(),
-        roomNo: z.string().trim().max(40).optional(),
-      })
-      .refine((value) => Boolean(value.email || value.phone), {
-        message: 'Give an e-mail address or a phone number.',
-        path: ['email'],
-      });
+    return (
+      z
+        .object({
+          fullName: z.string().trim().min(2, 'Enter your full name.').max(120),
+          email: CommonValidator.email().optional(),
+          phone: CommonValidator.phone().optional(),
+          password: z.string().min(1, 'Choose a password.'),
+          role: z.enum([USER_ROLE.STUDENT, USER_ROLE.VENDOR]).default(USER_ROLE.STUDENT),
+          gender: CommonValidator.gender().optional(),
+          hallName: CommonValidator.hall().optional(),
+          roomNo: z.string().trim().max(40).optional(),
+        })
+        .refine((value) => Boolean(value.email || value.phone), {
+          message: 'Give an e-mail address or a phone number.',
+          path: ['email'],
+        })
+        // A hall without a gender cannot be checked against the right list, and the halls
+        // are the one place the two fields are not independent.
+        .refine((value) => !value.hallName || Boolean(value.gender), {
+          message: 'Tell us your gender so we know which halls to offer.',
+          path: ['gender'],
+        })
+    );
   }
 
   /**

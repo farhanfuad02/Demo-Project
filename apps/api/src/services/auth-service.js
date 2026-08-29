@@ -7,8 +7,14 @@
 import { AUDIT_ACTION, AUDIT_ENTITY, TOKEN_TYPE, USER_ROLE } from '@hungry-ju/shared/enums';
 import { AUTH } from '@hungry-ju/shared/constants';
 import { BaseService } from '../core/base-service.js';
-import { ConflictError, ForbiddenError, UnauthorizedError } from '../core/errors/app-error.js';
+import {
+  ConflictError,
+  ForbiddenError,
+  UnauthorizedError,
+  ValidationError,
+} from '../core/errors/app-error.js';
 import { UserFactory } from '../models/user-factory.js';
+import { HallPolicy } from './hall-policy.js';
 
 /**
  * Registration payload accepted from the client (FR-A1).
@@ -19,7 +25,8 @@ import { UserFactory } from '../models/user-factory.js';
  * @property {string} [phone] - Contact phone; must be unused (BR-01).
  * @property {string} password - Plaintext password, checked against FR-A3 rules.
  * @property {import('@hungry-ju/shared/types').UserRole} [role] - Account type to create.
- * @property {string} [hallName] - Residence hall, for students.
+ * @property {string} [gender] - `male` or `female`; decides which halls are on offer.
+ * @property {string} [hallName] - Residence hall code, for students.
  * @property {string} [roomNo] - Room or gate, for students.
  */
 
@@ -104,6 +111,7 @@ export class AuthService extends BaseService {
    *   pending account and the link that activates it.
    * @throws {ConflictError} When the e-mail or phone number is already registered (BR-01).
    * @throws {ForbiddenError} When an admin account is requested.
+   * @throws {ValidationError} When the hall does not belong to the stated gender.
    */
   async register(payload) {
     const role = payload.role ?? USER_ROLE.STUDENT;
@@ -117,9 +125,20 @@ export class AuthService extends BaseService {
       throw new ConflictError('That e-mail address or phone number is already registered.');
     }
 
+    const gender = payload.gender ?? null;
+    // Checked before the account is written, so a mismatched hall does not leave a
+    // half-registered user behind for the student to trip over on their second attempt.
+    HallPolicy.assertMatchesGender(payload.hallName, gender);
+
     const passwordHash = await this.#passwordService.hash(payload.password);
     const user = await this.#userRepository.create(
-      UserFactory.create(role, { fullName: payload.fullName.trim(), email, phone, passwordHash })
+      UserFactory.create(role, {
+        fullName: payload.fullName.trim(),
+        email,
+        phone,
+        passwordHash,
+        gender,
+      })
     );
 
     if (role === USER_ROLE.STUDENT) {

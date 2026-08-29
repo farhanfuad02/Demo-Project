@@ -63,6 +63,15 @@ export class SessionModel extends BaseViewModel {
   }
 
   /**
+   * Gender on the account, which decides which halls are on offer.
+   *
+   * @returns {string | null} `male`, `female`, or `null` when not stated yet.
+   */
+  get gender() {
+    return /** @type {string | null} */ (this.raw.gender ?? null);
+  }
+
+  /**
    * Where this account lands after signing in (FR-A7).
    *
    * @returns {string} Route path.
@@ -110,7 +119,7 @@ export class SessionModel extends BaseViewModel {
   /**
    * Residence hall.
    *
-   * @returns {string | null} Hall name.
+   * @returns {string | null} Hall code, e.g. `SRJ`.
    */
   get hallName() {
     return /** @type {string | null} */ (this.profile?.hallName ?? null);

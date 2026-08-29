@@ -207,7 +207,7 @@ describe('OrderRepository', () => {
       cart,
       reference: 'HJU-TEST',
       deliveryFee: Money.fromTaka(25),
-      deliveryHall: 'Hall',
+      deliveryHall: 'SRJ',
       deliveryRoom: '1',
     });
   };

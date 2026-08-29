@@ -10,7 +10,7 @@
 
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import request from 'supertest';
-import { DELIVERY_STATUS, ORDER_STATUS, USER_ROLE } from '@hungry-ju/shared/enums';
+import { DELIVERY_STATUS, GENDER, ORDER_STATUS, USER_ROLE } from '@hungry-ju/shared/enums';
 import { Application } from '../../src/app.js';
 import { Env } from '../../src/config/env.js';
 import { TOKENS } from '../../src/config/container.js';
@@ -121,6 +121,49 @@ describe('authentication', () => {
     expect(response.status).toBe(401);
   });
 
+  it('refuses a hall that is not a JU hall, before it reaches a service', async () => {
+    const response = await api.post('/api/auth/register').send({
+      fullName: 'New Student',
+      email: 'hall.check@juniv.edu',
+      password: PASSWORD,
+      gender: GENDER.MALE,
+      hallName: 'Pritilata Hall',
+      roomNo: '1',
+    });
+
+    expect(response.status).toBe(422);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('refuses a real hall from the other gender list, with a message naming the options', async () => {
+    const response = await api.post('/api/auth/register').send({
+      fullName: 'New Student',
+      email: 'hall.mismatch@juniv.edu',
+      password: PASSWORD,
+      gender: GENDER.FEMALE,
+      hallName: 'SRJ',
+      roomNo: '1',
+    });
+
+    expect(response.status).toBe(422);
+    expect(response.body.error.message).toMatch(/not one of your halls/);
+    expect(response.body.error.message).toMatch(/PRH/);
+  });
+
+  it('registers a student into a hall of their own gender', async () => {
+    const response = await api.post('/api/auth/register').send({
+      fullName: 'New Student',
+      email: 'hall.ok@juniv.edu',
+      password: PASSWORD,
+      gender: GENDER.FEMALE,
+      hallName: 'J24H',
+      roomNo: '1',
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.user.gender).toBe(GENDER.FEMALE);
+  });
+
   it('rejects a malformed body before it reaches a service', async () => {
     const response = await api.post('/api/auth/register').send({ fullName: 'X' });
     expect(response.status).toBe(422);
@@ -183,7 +226,8 @@ describe('authentication', () => {
     const response = await as(api.get('/api/auth/me'), token);
 
     expect(response.body.data.role).toBe(USER_ROLE.STUDENT);
-    expect(response.body.data.profile.hallName).toBeTruthy();
+    expect(response.body.data.profile.hallName).toBe('SRJ');
+    expect(response.body.data.gender).toBe(GENDER.MALE);
     expect(response.body.data).not.toHaveProperty('passwordHash');
   });
 });
@@ -370,6 +414,39 @@ describe('the full order lifecycle', () => {
     // Notifications (FR-E2).
     const notifications = await as(api.get('/api/notifications'), studentToken);
     expect(notifications.body.data.length).toBeGreaterThan(0);
+  });
+
+  it('delivers only to a hall on the matching gender list (FR-C6)', async () => {
+    const studentToken = await signIn('farhan@juniv.edu');
+    const shops = await api.get('/api/shops');
+    const detail = await api.get(`/api/shops/${shops.body.data[0].id}`);
+    const item = detail.body.data.menu.find((entry) => entry.isAvailable);
+    await as(api.post('/api/cart/items'), studentToken).send({ menuItemId: item.id });
+
+    // A hall that is not JU's at all never reaches a service.
+    const invented = await as(api.post('/api/orders'), studentToken).send({
+      deliveryHall: 'Some Other Hall',
+      deliveryRoom: '1',
+    });
+    expect(invented.status).toBe(422);
+
+    // A real hall, but from the female list, and this student is male.
+    const wrongList = await as(api.post('/api/orders'), studentToken).send({
+      deliveryHall: 'PRH',
+      deliveryRoom: '1',
+    });
+    expect(wrongList.status).toBe(422);
+    expect(wrongList.body.error.message).toMatch(/not one of your halls/);
+
+    // The cart survived both refusals, so the student can simply pick again.
+    expect((await as(api.get('/api/cart'), studentToken)).body.data.isEmpty).toBe(false);
+
+    const accepted = await as(api.post('/api/orders'), studentToken).send({
+      deliveryHall: 'ABH',
+      deliveryRoom: '1',
+    });
+    expect(accepted.status).toBe(201);
+    expect(accepted.body.data.order.deliveryHall).toBe('ABH');
   });
 
   it('cancels while the window is still open and notifies the vendor', async () => {

@@ -42,12 +42,7 @@ export class OrderingValidator {
    */
   static placeOrder() {
     return z.object({
-      deliveryHall: z
-        .string()
-        .trim()
-        .min(2, 'Which hall should we deliver to?')
-        .max(120)
-        .optional(),
+      deliveryHall: CommonValidator.hall().optional(),
       deliveryRoom: z.string().trim().min(1, 'Which room or gate?').max(40).optional(),
       note: CommonValidator.note(),
     });

@@ -24,7 +24,7 @@ export class AccountValidator {
     return z.object({
       fullName: z.string().trim().min(2).max(120).optional(),
       phone: CommonValidator.phone().optional(),
-      gender: z.string().trim().max(40).nullable().optional(),
+      gender: CommonValidator.gender().optional(),
       photoUrl: z.url('Enter a valid image URL.').nullable().optional(),
     });
   }
@@ -36,7 +36,7 @@ export class AccountValidator {
    */
   static updateLocation() {
     return z.object({
-      hallName: z.string().trim().min(2, 'Which hall do you live in?').max(120).optional(),
+      hallName: CommonValidator.hall().optional(),
       roomNo: z.string().trim().min(1, 'Which room or gate?').max(40).optional(),
     });
   }

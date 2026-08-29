@@ -62,9 +62,9 @@ describe('SessionModel', () => {
 
   it('knows whether an order can be delivered without asking for an address', () => {
     expect(makeSession().hasDeliveryAddress).toBe(false);
-    expect(
-      makeSession({ profile: { hallName: 'Pritilata Hall', roomNo: '302' } }).hasDeliveryAddress
-    ).toBe(true);
+    expect(makeSession({ profile: { hallName: 'PRH', roomNo: '302' } }).hasDeliveryAddress).toBe(
+      true
+    );
   });
 
   it('reads the rider fields off the student profile', () => {
@@ -182,7 +182,7 @@ describe('OrderModel', () => {
       subtotal: 120,
       deliveryFee: 25,
       total: 145,
-      deliveryHall: 'Pritilata Hall',
+      deliveryHall: 'PRH',
       deliveryRoom: '302',
       isCancellable: true,
       isFinal: false,
@@ -239,7 +239,7 @@ describe('OrderModel', () => {
   });
 
   it('formats the destination', () => {
-    expect(makeOrder().destination).toBe('Pritilata Hall, room 302');
+    expect(makeOrder().destination).toBe('PRH, room 302');
   });
 });
 
